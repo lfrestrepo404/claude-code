@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aprende Claude Code</title>
+  <meta name="description" content="Curso esencial, secuencial y práctico para aprender Claude Code desde cero.">
+  <script>
+    /* Tema antes de pintar: noche por defecto */
+    try { document.documentElement.dataset.theme = localStorage.getItem('cc-theme') === 'light' ? 'light' : 'dark'; }
+    catch (e) { document.documentElement.dataset.theme = 'dark'; }
+  </script>
+  <style>
+    /* Modo noche: por defecto */
+    :root {
+      color-scheme: dark;
+      --bg: #1a1918;
+      --surface: #232120;
+      --text: #ece9e2;
+      --muted: #a19e97;
+      --border: #38352f;
+      --accent: #e08a68;
+      --accent-ink: #1a1918;
+      --accent-soft: #3a2a23;
+      --code-bg: #151413;
+      --ok: #6cc38d;
+      --warn-bg: #3a3320;
+      --warn-bd: #7d6c2c;
+      --tip-bg: #1f3227;
+      --tip-bd: #3f7a55;
+      --term-bg: #121110;
+      --term-fg: #e8e5de;
+      --shadow: 0 1px 2px rgba(0,0,0,.4);
+      --top-h: 56px;
+      --bar-h: 64px;
+      --side-w: 300px;
+    }
+    /* Modo día */
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --text: #1f1e1d;
+      --muted: #6b6a68;
+      --border: #e5e2da;
+      --accent: #c96442;
+      --accent-ink: #ffffff;
+      --accent-soft: #f6e4dc;
+      --code-bg: #f1efe8;
+      --ok: #2f7d4f;
+      --warn-bg: #fbf1d8;
+      --warn-bd: #e3c76b;
+      --tip-bg: #e4f0e8;
+      --tip-bd: #8fbf9f;
+      --term-bg: #1e1d1c;
+      --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ---------- Barra superior ---------- */
+    .topbar {
+      position: fixed; inset: 0 0 auto 0; height: var(--top-h); z-index: 30;
+      display: flex; align-items: center; gap: 12px; padding: 0 16px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .icon-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 10px;
+      background: transparent; border: 1px solid var(--border);
+    }
+    .icon-btn:hover { background: var(--accent-soft); }
+    .icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+    .brand { font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+    .brand span { color: var(--accent); }
+    .crumb { color: var(--muted); font-size: .9rem; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .theme-btn .i-moon { display: none; }
+    :root[data-theme="light"] .theme-btn .i-sun { display: none; }
+    :root[data-theme="light"] .theme-btn .i-moon { display: block; }
+    .progress { position: absolute; left: 0; bottom: -1px; height: 3px; width: 0; background: var(--accent); transition: width .3s ease; }
+
+    /* ---------- Panel lateral ---------- */
+    .sidebar {
+      position: fixed; top: var(--top-h); bottom: 0; left: 0; width: var(--side-w); z-index: 25;
+      background: var(--surface); border-right: 1px solid var(--border);
+      overflow-y: auto; padding: 16px 12px 24px;
+      transform: translateX(-100%); transition: transform .25s ease; visibility: hidden;
+    }
+    body.sidebar-open .sidebar { transform: none; visibility: visible; }
+    .sidebar h2 { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 4px 10px 10px; }
+    .toc { list-style: none; margin: 0; padding: 0; }
+    .toc button {
+      width: 100%; display: flex; gap: 10px; align-items: baseline; text-align: left;
+      padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; line-height: 1.35;
+    }
+    .toc button:hover { background: var(--accent-soft); }
+    .toc .n { flex: none; width: 1.7em; font-variant-numeric: tabular-nums; color: var(--muted); font-size: .85rem; }
+    .toc li.visited .n { color: var(--ok); }
+    .toc li.visited .n::after { content: "✓"; }
+    .toc li.visited .n span { display: none; }
+    .toc li.active button { background: var(--accent-soft); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+    .backdrop { display: none; position: fixed; inset: var(--top-h) 0 0 0; z-index: 20; background: rgba(0,0,0,.4); }
+
+    /* ---------- Contenido ---------- */
+    main {
+      padding: calc(var(--top-h) + 32px) 24px calc(var(--bar-h) + 48px);
+      transition: margin-left .25s ease;
+    }
+    .chapter { max-width: 760px; margin: 0 auto; }
+    .js .chapter[hidden] { display: none; }
+    .kicker { color: var(--accent); font-weight: 600; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 4px; }
+    .chapter h2 { font-size: clamp(1.7rem, 4vw, 2.2rem); line-height: 1.2; letter-spacing: -.02em; margin: 0 0 16px; }
+    .chapter h3 { font-size: 1.15rem; margin: 32px 0 8px; }
+    .lead { font-size: 1.1rem; color: var(--muted); }
+    p, ul, ol { margin: 0 0 14px; }
+    li { margin-bottom: 4px; }
+    a { color: var(--accent); }
+    code {
+      font: .88em/1.4 ui-monospace, "Cascadia Code", Consolas, Menlo, monospace;
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px;
+    }
+    kbd {
+      font: .82em ui-monospace, Consolas, monospace; background: var(--surface);
+      border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px;
+    }
+    pre {
+      position: relative; margin: 0 0 16px; padding: 14px 16px; overflow-x: auto;
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    }
+    pre code { background: none; border: 0; padding: 0; font-size: .88rem; line-height: 1.6; white-space: pre; }
+    .copy {
+      position: absolute; top: 8px; right: 8px; padding: 2px 10px; font-size: .78rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--muted);
+    }
+    .copy:hover { color: var(--text); border-color: var(--accent); }
+
+    .callout { border-left: 4px solid; border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; }
+    .callout > :last-child { margin-bottom: 0; }
+    .callout.tip { background: var(--tip-bg); border-color: var(--tip-bd); }
+    .callout.warn { background: var(--warn-bg); border-color: var(--warn-bd); }
+    .callout strong.label { display: block; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+
+    .term { background: var(--term-bg); color: var(--term-fg); border-radius: 10px; padding: 14px 16px; margin: 0 0 16px;
+      font: .88rem/1.7 ui-monospace, "Cascadia Code", Consolas, Menlo, monospace; overflow-x: auto; }
+    .term .p { color: #e08a68; }
+    .term .d { color: #8b8983; }
+    .term .g { color: #6cc38d; }
+    .term .r { color: #ef7b7b; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 0 0 16px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+    .card h4 { margin: 0 0 4px; font-size: 1rem; }
+    .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+    .table-wrap { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    th, td { text-align: left; padding: 10px 14px; vertical-align: top; border-bottom: 1px solid var(--border); }
+    th { background: var(--code-bg); font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { white-space: nowrap; font-weight: 600; }
+    td:first-child code { font-weight: 400; }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .tabs button { padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+    .tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+    .panel[hidden] { display: none; }
+
+    .search { width: 100%; padding: 10px 14px; margin-bottom: 12px; font: inherit; color: var(--text);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+    .empty { color: var(--muted); display: none; }
+
+    .checklist { list-style: none; padding: 0; }
+    .checklist label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; margin-bottom: 8px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+    .checklist input { margin-top: .35em; accent-color: var(--accent); width: 18px; height: 18px; flex: none; }
+    .checklist input:checked + span { color: var(--muted); text-decoration: line-through; }
+
+    /* ---------- Barra inferior de navegación ---------- */
+    .pager {
+      position: fixed; inset: auto 0 0 0; height: var(--bar-h); z-index: 20;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 24px;
+      background: var(--surface); border-top: 1px solid var(--border); transition: left .25s ease;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface); font-weight: 600;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--accent); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .counter { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; text-align: center; }
+    .counter small { display: block; font-size: .72rem; }
+
+    @media (min-width: 900px) {
+      body.sidebar-open main { margin-left: var(--side-w); }
+      body.sidebar-open .pager { left: var(--side-w); }
+    }
+    @media (max-width: 899px) {
+      body.sidebar-open .backdrop { display: block; }
+      .sidebar { box-shadow: var(--shadow); }
+      .crumb { display: none; }
+      .brand { margin-right: auto; }
+    }
+    @media (max-width: 520px) {
+      main { padding-left: 16px; padding-right: 16px; }
+      .pager { padding: 0 16px; }
+      .btn { padding: 10px 12px; }
+      .counter small { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn" id="menuBtn" aria-label="Mostrar u ocultar índice" aria-expanded="false" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <div class="brand">Aprende <span>Claude Code</span></div>
+    <div class="crumb" id="crumb"></div>
+    <button class="icon-btn theme-btn" id="themeBtn" type="button">
+      <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <div class="progress" id="progress" role="progressbar" aria-label="Progreso del curso"></div>
+  </header>
+
+  <div class="backdrop" id="backdrop"></div>
+  <nav class="sidebar" id="sidebar" aria-label="Índice del curso">
+    <h2>Contenido</h2>
+    <ol class="toc" id="toc"></ol>
+  </nav>
+
+  <main id="main">
+
+    <!-- 1 -->
+    <section class="chapter" data-title="¿Por qué aprender Claude Code?">
+      <h2>¿Por qué aprender Claude Code?</h2>
+      <p class="lead">
+        Claude Code es un asistente de programación que se integra directamente en tu terminal
+        y flujo de trabajo, permitiéndote escribir, depurar y entender código más rápido.
+      </p>
+      <p>
+        Aprender a usarlo te ayuda a automatizar tareas repetitivas, explorar bases de código
+        grandes con mayor facilidad y aumentar tu productividad como desarrollador, sin importar
+        tu nivel de experiencia.
+      </p>
+      <h3>Qué puede hacer</h3>
+      <div class="cards">
+        <div class="card"><h4>Entender código</h4><p>Explica proyectos desconocidos, busca dónde vive cada cosa.</p></div>
+        <div class="card"><h4>Escribir y editar</h4><p>Crea archivos, modifica varios a la vez, refactoriza.</p></div>
+        <div class="card"><h4>Depurar</h4><p>Lee errores, ejecuta tests, propone y aplica correcciones.</p></div>
+        <div class="card"><h4>Automatizar git</h4><p>Commits, ramas y pull requests con mensajes descriptivos.</p></div>
+      </div>
+      <div class="callout tip">
+        <strong class="label">Cómo usar este curso</strong>
+        <p>Avanza con <kbd>Siguiente</kbd> / <kbd>Atrás</kbd> o las flechas <kbd>←</kbd> <kbd>→</kbd> del teclado. El botón de menú (arriba a la izquierda) abre el índice para saltar a cualquier capítulo.</p>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="chapter" data-title="Instalación y primer arranque">
+      <h2>Instalación y primer arranque</h2>
+      <p class="lead">Un comando para instalar, otro para iniciar. Necesitas una cuenta de Claude (Pro, Max, Team, Enterprise) o una cuenta de API en Anthropic Console.</p>
+
+      <h3>1. Instalar</h3>
+      <div class="tabs" role="tablist" aria-label="Sistema operativo">
+        <button role="tab" aria-selected="true" data-tab="win">Windows</button>
+        <button role="tab" aria-selected="false" data-tab="mac">macOS / Linux</button>
+        <button role="tab" aria-selected="false" data-tab="npm">npm</button>
+      </div>
+      <div class="panel" data-panel="win">
+        <pre><code>irm https://claude.ai/install.ps1 | iex</code></pre>
+        <p>Ejecútalo en PowerShell. En Windows conviene tener <em>Git for Windows</em> instalado.</p>
+      </div>
+      <div class="panel" data-panel="mac" hidden>
+        <pre><code>curl -fsSL https://claude.ai/install.sh | bash</code></pre>
+      </div>
+      <div class="panel" data-panel="npm" hidden>
+        <pre><code>npm install -g @anthropic-ai/claude-code</code></pre>
+        <p>Requiere Node.js 18 o superior.</p>
+      </div>
+
+      <h3>2. Verificar</h3>
+      <pre><code>claude --version
+claude doctor</code></pre>
+
+      <h3>3. Iniciar en tu proyecto</h3>
+      <pre><code>cd ruta/a/mi-proyecto
+claude</code></pre>
+      <p>La primera vez te pedirá iniciar sesión (o usa <code>/login</code> más tarde). Después verás un cuadro de texto: ya puedes escribir.</p>
+      <div class="callout tip">
+        <strong class="label">Consejo</strong>
+        <p>Siempre inicia <code>claude</code> desde la carpeta raíz del proyecto: esa es la carpeta que Claude ve y puede modificar.</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="chapter" data-title="Tu primera sesión">
+      <h2>Tu primera sesión</h2>
+      <p class="lead">Conversas en lenguaje natural. Claude lee, propone cambios y tú apruebas.</p>
+
+      <div class="term" aria-label="Ejemplo de sesión">
+<span class="d">$</span> claude
+<span class="p">&gt;</span> explícame la estructura de este proyecto
+<span class="d">● Leyendo package.json, src/…</span>
+  Es una API en Node con Express. <span class="d">src/routes</span> define los endpoints…
+<span class="p">&gt;</span> agrega validación de email en @src/routes/users.js
+<span class="d">● Edit(src/routes/users.js)</span>
+  <span class="g">+ if (!isValidEmail(email)) return res.status(400)…</span>
+  <span class="d">¿Aplicar cambio?  [Sí] [Sí, siempre] [No]</span>
+      </div>
+
+      <h3>El ciclo básico</h3>
+      <ol>
+        <li><strong>Pides</strong> algo en un prompt.</li>
+        <li><strong>Claude explora</strong>: lee archivos, busca, ejecuta comandos.</li>
+        <li><strong>Propone</strong> ediciones o comandos y espera tu permiso.</li>
+        <li><strong>Verifica</strong> (tests, build) y te informa.</li>
+      </ol>
+
+      <h3>Prompts que funcionan</h3>
+      <ul>
+        <li><strong>Específicos:</strong> <em>"agrega un test para el caso de email vacío en users.test.js"</em> mejor que <em>"mejora los tests"</em>.</li>
+        <li><strong>Con contexto:</strong> menciona archivos con <code>@ruta/archivo</code>.</li>
+        <li><strong>Con criterio de éxito:</strong> <em>"…y confirma que <code>npm test</code> pasa"</em>.</li>
+        <li><strong>Por pasos:</strong> primero investigar, luego implementar.</li>
+      </ul>
+      <div class="callout warn">
+        <strong class="label">Revisa siempre</strong>
+        <p>Lee los cambios propuestos antes de aceptarlos. Claude puede equivocarse; tú decides qué se aplica. Con <kbd>Esc</kbd> lo interrumpes en cualquier momento.</p>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="chapter" data-title="Comandos y atajos esenciales">
+      <h2>Comandos y atajos esenciales</h2>
+      <p class="lead">Un <em>slash command</em> empieza con <code>/</code>. Escribe solo <code>/</code> para ver la lista completa.</p>
+
+      <h3>Slash commands</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Comando</th><th>Para qué sirve</th></tr></thead>
+        <tbody>
+          <tr><td><code>/help</code></td><td>Ayuda y lista de comandos.</td></tr>
+          <tr><td><code>/init</code></td><td>Crea un <code>CLAUDE.md</code> analizando el proyecto.</td></tr>
+          <tr><td><code>/clear</code></td><td>Borra la conversación y empieza de cero.</td></tr>
+          <tr><td><code>/compact</code></td><td>Resume la conversación para liberar contexto.</td></tr>
+          <tr><td><code>/context</code></td><td>Muestra cuánto contexto llevas usado.</td></tr>
+          <tr><td><code>/model</code></td><td>Cambia de modelo.</td></tr>
+          <tr><td><code>/memory</code></td><td>Edita los archivos de memoria (<code>CLAUDE.md</code>).</td></tr>
+          <tr><td><code>/permissions</code></td><td>Gestiona reglas de permitir / denegar.</td></tr>
+          <tr><td><code>/mcp</code></td><td>Estado de servidores MCP conectados.</td></tr>
+          <tr><td><code>/agents</code></td><td>Crea y administra subagentes.</td></tr>
+          <tr><td><code>/hooks</code></td><td>Ver hooks configurados.</td></tr>
+          <tr><td><code>/resume</code></td><td>Retoma una conversación anterior.</td></tr>
+          <tr><td><code>/login</code></td><td>Inicia sesión o cambia de cuenta.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Atajos de teclado y prefijos</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Atajo</th><th>Acción</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>Esc</kbd></td><td>Interrumpe a Claude.</td></tr>
+          <tr><td><kbd>Esc</kbd> <kbd>Esc</kbd></td><td>Retrocede a un punto anterior de la conversación (<em>rewind</em>).</td></tr>
+          <tr><td><kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Cambia el modo de permisos.</td></tr>
+          <tr><td><code>@ruta</code></td><td>Referencia un archivo o carpeta.</td></tr>
+          <tr><td><code>! comando</code></td><td>Ejecuta un comando de shell directamente.</td></tr>
+          <tr><td><kbd>↑</kbd></td><td>Historial de prompts.</td></tr>
+          <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Cancela la entrada actual; dos veces, sale.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Desde la terminal</h3>
+      <pre><code>claude                    # sesión interactiva
+claude "explica este repo"  # inicia con un prompt
+claude -p "resume README.md"  # una respuesta y termina (scripts)
+claude -c                 # continúa la última conversación
+claude -r                 # elige una conversación para retomar</code></pre>
+    </section>
+
+    <!-- 5 -->
+    <section class="chapter" data-title="Permisos y modo plan">
+      <h2>Permisos y modo plan</h2>
+      <p class="lead">Claude pide permiso antes de editar archivos o ejecutar comandos. Tú controlas cuánta autonomía le das. Cambia de modo con <kbd>Shift</kbd>+<kbd>Tab</kbd>.</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Modo</th><th>Comportamiento</th></tr></thead>
+        <tbody>
+          <tr><td>Normal</td><td>Pregunta antes de editar o ejecutar comandos.</td></tr>
+          <tr><td>Aceptar ediciones</td><td>Edita archivos sin preguntar; los comandos siguen pidiendo permiso.</td></tr>
+          <tr><td>Plan</td><td>Solo lee y propone un plan. No modifica nada hasta que lo apruebes.</td></tr>
+          <tr><td>Sin permisos</td><td><code>--dangerously-skip-permissions</code>: sin preguntas.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn">
+        <strong class="label">Cuidado</strong>
+        <p>Usa el modo sin permisos únicamente en entornos aislados (contenedor, máquina virtual) y nunca con datos que no puedas perder.</p>
+      </div>
+
+      <h3>Cuándo usar modo plan</h3>
+      <p>Para tareas grandes o ambiguas: Claude investiga y presenta un plan; lo revisas, corriges y solo entonces se ejecuta. Reduce sorpresas.</p>
+
+      <h3>Reglas permanentes</h3>
+      <p>Evita aprobar lo mismo cien veces. Define reglas en <code>.claude/settings.json</code> (o con <code>/permissions</code>):</p>
+      <pre><code>{
+  "permissions": {
+    "allow": ["Bash(npm run test:*)", "Bash(git status)"],
+    "deny": ["Read(./.env)"]
+  }
+}</code></pre>
+    </section>
+
+    <!-- 6 -->
+    <section class="chapter" data-title="CLAUDE.md y memoria">
+      <h2>CLAUDE.md y memoria</h2>
+      <p class="lead">Claude no recuerda conversaciones pasadas por defecto. <code>CLAUDE.md</code> es el archivo que lee automáticamente al iniciar para conocer tu proyecto y tus preferencias.</p>
+
+      <h3>Dónde puede vivir</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ubicación</th><th>Alcance</th></tr></thead>
+        <tbody>
+          <tr><td><code>~/.claude/CLAUDE.md</code></td><td>Global: todas tus sesiones, todos los proyectos.</td></tr>
+          <tr><td><code>./CLAUDE.md</code></td><td>Proyecto: raíz del repo; se comparte con el equipo.</td></tr>
+          <tr><td><code>subcarpeta/CLAUDE.md</code></td><td>Se carga al trabajar en esa carpeta.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Crearlo</h3>
+      <pre><code>/init</code></pre>
+      <p>Claude analiza el proyecto y genera un borrador. Edítalo con <code>/memory</code> o a mano.</p>
+
+      <h3>Ejemplo mínimo</h3>
+      <pre><code># Mi proyecto
+API REST en Node 20 + Express.
+
+## Comandos
+- Tests: npm test
+- Lint: npm run lint
+
+## Reglas
+- Responde siempre en español.
+- Usa async/await, nunca callbacks.
+- No modifiques archivos en /migrations.</code></pre>
+      <div class="callout tip">
+        <strong class="label">Consejo</strong>
+        <p>Que sea corto y concreto: comandos, convenciones y "no hagas X". Todo lo que escribas consume contexto en cada sesión.</p>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section class="chapter" data-title="Gestionar el contexto">
+      <h2>Gestionar el contexto</h2>
+      <p class="lead">El <em>contexto</em> es todo lo que Claude "tiene en mente": conversación, archivos leídos, salidas de comandos. Es limitado; cuando se llena, la calidad baja.</p>
+
+      <div class="cards">
+        <div class="card"><h4><code>/context</code></h4><p>Mide cuánto has usado y en qué.</p></div>
+        <div class="card"><h4><code>/compact</code></h4><p>Resume lo hecho y libera espacio, conservando lo esencial.</p></div>
+        <div class="card"><h4><code>/clear</code></h4><p>Empieza limpio. Úsalo al cambiar de tarea.</p></div>
+        <div class="card"><h4><code>/resume</code></h4><p>Vuelve a una conversación anterior.</p></div>
+      </div>
+
+      <h3>Buenas prácticas</h3>
+      <ul>
+        <li><strong>Una tarea por sesión.</strong> Al terminar, <code>/clear</code>.</li>
+        <li>Guía el resumen: <code>/compact conserva las decisiones de diseño y la lista de archivos tocados</code>.</li>
+        <li>Menciona solo los archivos necesarios con <code>@</code>, no carpetas enormes.</li>
+        <li>Lo que debe persistir siempre va a <code>CLAUDE.md</code>, no a la conversación.</li>
+      </ul>
+    </section>
+
+    <!-- 8 -->
+    <section class="chapter" data-title="Skills, agentes y hooks">
+      <h2>Skills, agentes y hooks</h2>
+      <p class="lead">Tres formas de extender a Claude Code con tus propias reglas y flujos.</p>
+
+      <h3>Skills</h3>
+      <p>Instrucciones empaquetadas para un tipo de tarea. Claude las carga cuando la descripción coincide con lo que pides, o las invocas con <code>/nombre</code>.</p>
+      <pre><code># .claude/skills/revisar-codigo/SKILL.md
+---
+name: revisar-codigo
+description: Revisa cambios buscando bugs y problemas de estilo.
+---
+1. Lee el diff actual.
+2. Lista los problemas por severidad.
+3. Propón correcciones concretas.</code></pre>
+
+      <h3>Agentes (subagentes)</h3>
+      <p>Claude especializado con su propio contexto y herramientas. Delega investigaciones largas sin ensuciar tu conversación principal. Créalos con <code>/agents</code> o un archivo:</p>
+      <pre><code># .claude/agents/revisor.md
+---
+name: revisor
+description: Revisa código sin modificarlo.
+tools: Read, Grep, Glob
+---
+Eres un revisor estricto. Solo reporta hallazgos.</code></pre>
+
+      <h3>Hooks</h3>
+      <p>Comandos de shell que se ejecutan <strong>automáticamente</strong> ante eventos (antes/después de usar una herramienta, al terminar, etc.). Se configuran en <code>settings.json</code>:</p>
+      <pre><code>{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "npx prettier --write ." }]
+      }
+    ]
+  }
+}</code></pre>
+      <p>Ese ejemplo formatea el código cada vez que Claude edita un archivo.</p>
+
+      <h3>¿Cuál uso?</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Necesito…</th><th>Uso</th></tr></thead>
+        <tbody>
+          <tr><td>Que siempre conozca mis reglas</td><td><code>CLAUDE.md</code></td></tr>
+          <tr><td>Un procedimiento repetible bajo demanda</td><td>Skill</td></tr>
+          <tr><td>Delegar una tarea con contexto aparte</td><td>Agente</td></tr>
+          <tr><td>Que algo ocurra siempre, sin depender de Claude</td><td>Hook</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 9 -->
+    <section class="chapter" data-title="Conectar herramientas con MCP">
+      <h2>Conectar herramientas con MCP</h2>
+      <p class="lead">El <em>Model Context Protocol</em> conecta Claude Code con servicios externos: bases de datos, GitHub, Slack, Jira, navegadores, etc. Cada servidor añade herramientas nuevas.</p>
+
+      <h3>Añadir un servidor</h3>
+      <pre><code>claude mcp add --transport http mi-servidor &lt;URL-del-servidor&gt;
+claude mcp list
+claude mcp remove mi-servidor</code></pre>
+      <p>Dentro de una sesión, <code>/mcp</code> muestra el estado y permite autenticarse.</p>
+
+      <h3>Alcance</h3>
+      <ul>
+        <li><strong>Local:</strong> solo tú, solo este proyecto.</li>
+        <li><strong>Proyecto:</strong> archivo <code>.mcp.json</code> en el repo; lo comparte el equipo.</li>
+        <li><strong>Usuario:</strong> disponible en todos tus proyectos.</li>
+      </ul>
+      <div class="callout warn">
+        <strong class="label">Seguridad</strong>
+        <p>Un servidor MCP puede leer y actuar en tu nombre. Conecta solo servidores de fuentes en las que confíes.</p>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="chapter" data-title="Flujo de trabajo con git">
+      <h2>Flujo de trabajo con git</h2>
+      <p class="lead">Claude Code trabaja mejor sobre un repositorio git: cada cambio queda registrado y es reversible.</p>
+
+      <h3>Flujo recomendado</h3>
+      <ol>
+        <li>Crea una rama: <code>git switch -c mi-funcionalidad</code>.</li>
+        <li>Pide la tarea (usa modo plan si es grande).</li>
+        <li>Revisa con <code>git diff</code> y ejecuta los tests.</li>
+        <li>Pide: <em>"haz commit con un mensaje descriptivo"</em>.</li>
+        <li>Si tienes la CLI <code>gh</code>: <em>"abre un pull request"</em>.</li>
+      </ol>
+
+      <h3>Deshacer</h3>
+      <ul>
+        <li><kbd>Esc</kbd> <kbd>Esc</kbd> o <code>/rewind</code>: vuelve a un punto anterior de la sesión y restaura archivos.</li>
+        <li><code>git restore &lt;archivo&gt;</code> o <code>git revert</code>: deshace en el repositorio.</li>
+      </ul>
+      <div class="callout tip">
+        <strong class="label">Consejo</strong>
+        <p>Haz commit <em>antes</em> de una tarea grande. Es tu red de seguridad. Claude solo hace commit, push o acciones destructivas si se lo pides.</p>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="chapter" data-title="Glosario">
+      <h2>Glosario</h2>
+      <p class="lead">Términos usados al trabajar con Claude Code en la terminal.</p>
+      <input class="search" id="glossSearch" type="search" placeholder="Buscar término…" aria-label="Buscar en el glosario">
+      <div class="table-wrap"><table id="glossary">
+        <thead><tr><th>Término</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td>Prompt</td><td>Instrucción o mensaje que le escribes a Claude Code para pedirle una tarea.</td></tr>
+          <tr><td>Slash command</td><td>Comando especial que empieza con "/" (por ejemplo /help, /login) para ejecutar acciones predefinidas.</td></tr>
+          <tr><td>Agente (Agent)</td><td>Subproceso de Claude que se encarga de una tarea específica de forma autónoma, con sus propias herramientas.</td></tr>
+          <tr><td>Herramienta (Tool)</td><td>Función que Claude puede invocar para interactuar con el sistema, como leer archivos, editar código o ejecutar comandos.</td></tr>
+          <tr><td>Skill</td><td>Conjunto empaquetado de instrucciones para realizar un tipo de tarea concreto (por ejemplo revisión de código).</td></tr>
+          <tr><td>Hook</td><td>Comando de shell configurado para ejecutarse automáticamente en respuesta a eventos, como el uso de una herramienta.</td></tr>
+          <tr><td>MCP (Model Context Protocol)</td><td>Protocolo que permite conectar Claude Code con servidores externos que exponen herramientas adicionales.</td></tr>
+          <tr><td>Contexto (Context window)</td><td>Cantidad de conversación e información que Claude puede "recordar" y procesar en un momento dado.</td></tr>
+          <tr><td>Memoria (Memory)</td><td>Sistema persistente donde Claude guarda información relevante del usuario o proyecto entre conversaciones.</td></tr>
+          <tr><td>Workflow</td><td>Script que orquesta múltiples agentes de forma determinista para tareas complejas en varias etapas.</td></tr>
+          <tr><td>Repositorio (Repo)</td><td>Carpeta de proyecto controlada por git, sobre la cual Claude Code puede operar y hacer commits.</td></tr>
+          <tr><td>Commit</td><td>Registro de cambios guardado en el historial de git, generalmente con un mensaje descriptivo.</td></tr>
+          <tr><td>Branch (Rama)</td><td>Línea independiente de desarrollo dentro de un repositorio git.</td></tr>
+          <tr><td>CLAUDE.md</td><td>Archivo de configuración con instrucciones y preferencias que Claude Code lee automáticamente en cada proyecto.</td></tr>
+          <tr><td>Artifact</td><td>Página web (HTML o Markdown) publicada por Claude Code que se puede compartir con otras personas.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="empty" id="glossEmpty">Sin resultados.</p>
+    </section>
+
+    <!-- 12 -->
+    <section class="chapter" data-title="Resumen y próximos pasos">
+      <h2>Resumen y próximos pasos</h2>
+      <p class="lead">Marca lo que ya dominas. Tu progreso se guarda en este navegador.</p>
+      <ul class="checklist" id="checklist">
+        <li><label><input type="checkbox"><span>Instalé Claude Code e inicié sesión.</span></label></li>
+        <li><label><input type="checkbox"><span>Hice un prompt específico y revisé el cambio propuesto.</span></label></li>
+        <li><label><input type="checkbox"><span>Uso <code>/clear</code>, <code>/compact</code> y <code>/context</code> para cuidar el contexto.</span></label></li>
+        <li><label><input type="checkbox"><span>Probé el modo plan con <kbd>Shift</kbd>+<kbd>Tab</kbd>.</span></label></li>
+        <li><label><input type="checkbox"><span>Creé un <code>CLAUDE.md</code> con <code>/init</code>.</span></label></li>
+        <li><label><input type="checkbox"><span>Creé una skill, un agente o un hook propio.</span></label></li>
+        <li><label><input type="checkbox"><span>Conecté un servidor MCP.</span></label></li>
+        <li><label><input type="checkbox"><span>Trabajo en ramas y hago commit antes de tareas grandes.</span></label></li>
+      </ul>
+
+      <h3>Reglas de oro</h3>
+      <ol>
+        <li>Sé específico y da un criterio de éxito verificable.</li>
+        <li>Planifica antes de tareas grandes.</li>
+        <li>Revisa todo antes de aceptar.</li>
+        <li>Cuida el contexto: una tarea, una sesión.</li>
+        <li>Lo permanente va en <code>CLAUDE.md</code>; lo automático, en hooks.</li>
+      </ol>
+      <div class="callout tip">
+        <strong class="label">Siguiente paso</strong>
+        <p>Abre un proyecto real, pídele a Claude una tarea pequeña y repite el ciclo. La práctica pesa más que la teoría. Documentación oficial: <a href="https://docs.claude.com/en/docs/claude-code" target="_blank" rel="noopener">docs.claude.com/en/docs/claude-code</a>.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="pager" id="pager">
+    <button class="btn" id="prevBtn">← Atrás</button>
+    <div class="counter" id="counter"></div>
+    <button class="btn primary" id="nextBtn">Siguiente →</button>
+  </div>
+
+  <script>
+    (function () {
+      document.documentElement.classList.add('js');
+
+      var chapters = Array.prototype.slice.call(document.querySelectorAll('.chapter'));
+      var total = chapters.length;
+      var toc = document.getElementById('toc');
+      var menuBtn = document.getElementById('menuBtn');
+      var backdrop = document.getElementById('backdrop');
+      var prevBtn = document.getElementById('prevBtn');
+      var nextBtn = document.getElementById('nextBtn');
+      var counter = document.getElementById('counter');
+      var crumb = document.getElementById('crumb');
+      var progress = document.getElementById('progress');
+      var current = 0;
+      var visited = {};
+      var wide = window.matchMedia('(min-width: 900px)');
+
+      function store(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+      function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+      try { visited = JSON.parse(load('cc-visited') || '{}') || {}; } catch (e) { visited = {}; }
+
+      /* Índice + kickers */
+      var items = chapters.map(function (ch, i) {
+        var num = i + 1;
+        var kicker = document.createElement('p');
+        kicker.className = 'kicker';
+        kicker.textContent = 'Capítulo ' + num + ' de ' + total;
+        ch.insertBefore(kicker, ch.firstChild);
+        ch.id = 'cap-' + num;
+
+        var li = document.createElement('li');
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.innerHTML = '<span class="n"><span>' + num + '</span></span><span></span>';
+        b.lastChild.textContent = ch.dataset.title;
+        b.addEventListener('click', function () {
+          show(i);
+          if (!wide.matches) setSidebar(false);
+        });
+        li.appendChild(b);
+        toc.appendChild(li);
+        return li;
+      });
+
+      /* Tema noche / día */
+      var themeBtn = document.getElementById('themeBtn');
+      function paintThemeBtn() {
+        var light = document.documentElement.dataset.theme === 'light';
+        var label = light ? 'Cambiar a modo noche' : 'Cambiar a modo día';
+        themeBtn.setAttribute('aria-label', label);
+        themeBtn.title = label;
+      }
+      themeBtn.addEventListener('click', function () {
+        var next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = next;
+        store('cc-theme', next);
+        paintThemeBtn();
+      });
+      paintThemeBtn();
+
+      /* Panel lateral */
+      function setSidebar(open) {
+        document.body.classList.toggle('sidebar-open', open);
+        menuBtn.setAttribute('aria-expanded', String(open));
+        if (wide.matches) store('cc-sidebar', open ? '1' : '0');
+      }
+      menuBtn.addEventListener('click', function () {
+        setSidebar(!document.body.classList.contains('sidebar-open'));
+      });
+      backdrop.addEventListener('click', function () { setSidebar(false); });
+
+      /* Mostrar capítulo */
+      function show(i, opts) {
+        opts = opts || {};
+        i = Math.max(0, Math.min(total - 1, i));
+        current = i;
+        chapters.forEach(function (ch, k) { ch.hidden = k !== i; });
+        visited[i] = 1;
+        store('cc-visited', JSON.stringify(visited));
+        store('cc-current', String(i));
+
+        items.forEach(function (li, k) {
+          li.classList.toggle('active', k === i);
+          li.classList.toggle('visited', !!visited[k] && k !== i);
+          var btn = li.firstChild;
+          if (k === i) btn.setAttribute('aria-current', 'step'); else btn.removeAttribute('aria-current');
+        });
+
+        prevBtn.disabled = i === 0;
+        nextBtn.disabled = i === total - 1;
+        counter.innerHTML = (i + 1) + ' / ' + total + '<small>' + chapters[i].dataset.title + '</small>';
+        crumb.textContent = (i + 1) + '. ' + chapters[i].dataset.title;
+        progress.style.width = ((i + 1) / total * 100) + '%';
+        progress.setAttribute('aria-valuenow', String(i + 1));
+        progress.setAttribute('aria-valuemax', String(total));
+        document.title = chapters[i].dataset.title + ' · Aprende Claude Code';
+
+        if (location.hash !== '#cap-' + (i + 1)) history.replaceState(null, '', '#cap-' + (i + 1));
+        if (!opts.silent) window.scrollTo({ top: 0, behavior: 'auto' });
+        items[i].scrollIntoView({ block: 'nearest' });
+      }
+
+      prevBtn.addEventListener('click', function () { show(current - 1); });
+      nextBtn.addEventListener('click', function () { show(current + 1); });
+
+      document.addEventListener('keydown', function (e) {
+        var t = e.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        if (e.key === 'ArrowRight') show(current + 1);
+        else if (e.key === 'ArrowLeft') show(current - 1);
+        else if (e.key === 'Escape' && !wide.matches) setSidebar(false);
+      });
+
+      window.addEventListener('hashchange', function () {
+        var m = /^#cap-(\d+)$/.exec(location.hash);
+        if (m && +m[1] - 1 !== current) show(+m[1] - 1);
+      });
+
+      /* Botones de copiar en bloques de código */
+      Array.prototype.forEach.call(document.querySelectorAll('pre'), function (pre) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'copy';
+        btn.textContent = 'Copiar';
+        btn.addEventListener('click', function () {
+          var text = pre.querySelector('code').innerText;
+          var done = function (ok) {
+            btn.textContent = ok ? '¡Copiado!' : 'Error';
+            setTimeout(function () { btn.textContent = 'Copiar'; }, 1500);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+          } else { done(false); }
+        });
+        pre.appendChild(btn);
+      });
+
+      /* Pestañas de sistema operativo */
+      var tabs = document.querySelectorAll('[data-tab]');
+      Array.prototype.forEach.call(tabs, function (tab) {
+        tab.addEventListener('click', function () {
+          Array.prototype.forEach.call(tabs, function (t) { t.setAttribute('aria-selected', String(t === tab)); });
+          Array.prototype.forEach.call(document.querySelectorAll('[data-panel]'), function (p) {
+            p.hidden = p.dataset.panel !== tab.dataset.tab;
+          });
+        });
+      });
+
+      /* Filtro del glosario */
+      var search = document.getElementById('glossSearch');
+      var rows = document.querySelectorAll('#glossary tbody tr');
+      var empty = document.getElementById('glossEmpty');
+      search.addEventListener('input', function () {
+        var q = search.value.trim().toLowerCase();
+        var shown = 0;
+        Array.prototype.forEach.call(rows, function (r) {
+          var hit = !q || r.textContent.toLowerCase().indexOf(q) !== -1;
+          r.style.display = hit ? '' : 'none';
+          if (hit) shown++;
+        });
+        empty.style.display = shown ? 'none' : 'block';
+      });
+
+      /* Lista de verificación persistente */
+      var boxes = document.querySelectorAll('#checklist input');
+      var saved = [];
+      try { saved = JSON.parse(load('cc-checks') || '[]') || []; } catch (e) { saved = []; }
+      Array.prototype.forEach.call(boxes, function (box, k) {
+        box.checked = !!saved[k];
+        box.addEventListener('change', function () {
+          store('cc-checks', JSON.stringify(Array.prototype.map.call(boxes, function (b) { return b.checked; })));
+        });
+      });
+
+      /* Estado inicial */
+      var start = 0;
+      var m = /^#cap-(\d+)$/.exec(location.hash);
+      if (m) start = +m[1] - 1;
+      else { var last = parseInt(load('cc-current'), 10); if (!isNaN(last)) start = last; }
+      setSidebar(wide.matches && load('cc-sidebar') !== '0');
+      show(start, { silent: true });
+    })();
+  </script>
+</body>
+</html>
